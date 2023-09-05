@@ -43,10 +43,14 @@ pipeline {
       retries 2
     }
   }
-  environment{
-    app_version = params.APP_VERSION
-  }
   stages {
+    stage('Setup Parameters') {
+      steps {
+        script {
+          env.app_version = params.APP_VERSION
+        }
+      }
+    }
     stage('Build Image') {
         steps{
             container('builder') {

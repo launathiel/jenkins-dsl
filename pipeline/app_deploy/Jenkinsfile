@@ -1,23 +1,46 @@
 pipeline {
-    agent{
-        label 'master'
+  agent {
+    kubernetes {
+      yaml '''
+        apiVersion: v1
+        kind: Pod
+        metadata:
+          labels:
+            jenkins: slave
+        spec:
+          containers:
+          - name: maven
+            image: maven:alpine
+            command:
+            - cat
+            tty: true
+          - name: busybox
+            image: busybox
+            command:
+            - cat
+            tty: true
+        '''
+      retries 2
     }
-    stages{
-        stage('test') {
-            steps {
-                sh 'hello from jenkins'
+  }
+  stages {
+    stage('Run maven') {
+        steps{
+            container('maven') {
+                sh 'mvn -version'
+                sh 'pwd'
+                sh 'ls -l'
             }
         }
     }
-    post {
-        always {
-            deleteDir()
-            dir("${workspace}@tmp") {
-                deleteDir()
-            }
-            dir("${workspace}@script") {
-                deleteDir()
+    stage('Run busybox') {
+        steps{
+            container('busybox') {
+                sh 'pwd'
+                sh 'ls -l'
+                sh '/bin/busybox'
             }
         }
     }
+  }
 }

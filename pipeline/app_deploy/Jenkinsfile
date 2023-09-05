@@ -1,0 +1,23 @@
+pipeline {
+    agent{
+        label 'master'
+    }
+    stages{
+        stage('test') {
+            steps {
+                sh 'hello from jenkins'
+            }
+        }
+    }
+    post {
+        always {
+            deleteDir()
+            dir("${workspace}@tmp") {
+                deleteDir()
+            }
+            dir("${workspace}@script") {
+                deleteDir()
+            }
+        }
+    }
+}

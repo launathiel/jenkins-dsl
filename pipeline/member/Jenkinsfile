@@ -32,7 +32,7 @@ pipeline {
                 value: --grpc-web --insecure --loglevel debug
             tty: true
           hostAliases:
-          - ip: "34.101.214.245"
+          - ip: "34.128.125.103"
             hostnames:
             - argo.pepago.my.id
           volumes:

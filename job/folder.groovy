@@ -1,3 +1,3 @@
-folder('app_deploy') {
+folder('microservices') {
     description('contain ci/cd pipeline for application')
 }

@@ -1,0 +1,78 @@
+pipeline {
+  agent {
+    kubernetes {
+      yaml '''
+        apiVersion: v1
+        kind: Pod
+        metadata:
+          labels:
+            jenkins: slave
+        spec:
+          containers:
+          - name: builder
+            image: gcr.io/kaniko-project/executor:debug
+            imagePullPolicy: Always
+            command:
+            - /busybox/cat
+            tty: true
+            volumeMounts:
+                - mountPath: /kaniko/.docker
+                  name: docker-creds
+                  readOnly: true
+            restartPolicy: Never
+          - name: argocd
+            image: launathiel/argocli:v2.5.22
+            imagePullPolicy: Always
+            command:
+            - cat
+            env:
+              - name: ARGOCD_SERVER
+                value: argo.pepago.my.id
+              - name: ARGOCD_OPTS
+                value: --grpc-web --insecure --loglevel debug
+            tty: true
+          hostAliases:
+          - ip: "34.101.214.245"
+            hostnames:
+            - argo.pepago.my.id
+          volumes:
+          - name: docker-creds
+            configMap:
+              name: docker-creds
+        '''
+      retries 2
+    }
+  }
+  environment{
+    app_version = params.APP_VERSION
+  }
+  stages {
+    stage('Build Image') {
+        steps{
+            container('builder') {
+                dir('DevOpsFullLabs'){
+                    git branch: "main",
+                      url: 'https://github.com/launathiel/DevOpsFullLabs.git'
+                    sh "/kaniko/executor --dockerfile `pwd`/app/member/Dockerfile --context `pwd`/app/member --destination=launathiel/member:" + app_version
+                }
+            }
+        }
+    }
+    stage('Syncronize With ArgoCD') {
+        steps{
+            container('argocd') {
+              withCredentials([string(credentialsId: "argocd-token", variable: 'ARGOCD_AUTH_TOKEN')]) {
+                dir('DevOpsFullLabs'){
+                  git branch: 'main',
+                    url: 'https://github.com/launathiel/DevOpsFullLabs.git'
+                  sh 'argocd version'
+                  sh 'argocd --grpc-web app create member-service --project default --repo https://github.com/launathiel/DevOpsFullLabs.git --file ./manifest/argocd/app/member.yaml --revision main --dest-namespace member --dest-server https://kubernetes.default.svc --upsert'
+                  sh 'argocd app set member-service --grpc-web --kustomize-image img=launathiel/member:' + app_version 
+                  sh 'argocd --grpc-web app sync member-service --prune'
+                }
+              }
+            }
+        }
+    }
+  }
+}

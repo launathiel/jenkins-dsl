@@ -6,7 +6,7 @@ pipeline {
         stage('seed or update all pipelines') {
             steps {
                 jobDsl targets: [
-                    'job/folder.groovy',
+                    'job/*.groovy',
                     'job/*/*.groovy'
                 ].join('\n')
             }
